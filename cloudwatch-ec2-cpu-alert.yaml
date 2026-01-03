@@ -1,0 +1,69 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  CloudWatch Alarm — EC2 CPU Utilization >= 50% with SNS Email Notification
+  for instance i-0ef57fab0b7cba88b
+
+Metadata:
+  Owner: DevOps Project
+  Purpose: EC2 CPU Monitoring & Alerting Demo
+  TemplateVersion: v1.0
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email address to receive CloudWatch alert notifications
+
+Resources:
+  # SNS Topic for CPU Alerts
+  CpuAlertSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: EC2 CPU Alert Topic
+      TopicName: ec2-cpu-alert-topic-demo
+
+  # Subscribe your email to the SNS Topic
+  CpuAlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint:
+        Ref: AlertEmail
+      TopicArn:
+        Ref: CpuAlertSNSTopic
+
+  # CloudWatch CPU Alarm for the EC2 instance
+  EC2CPUHighAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: "DANGER: EC2 INSTANCE CPU REACHED 50 percent"
+      AlarmDescription: >
+        Automated CloudWatch alert — EC2 CPU Utilization has reached or exceeded 50%.
+        Please investigate the instance performance and take corrective action.
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 50
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: missing
+      Dimensions:
+        - Name: InstanceId
+          Value: i-0ef57fab0b7cba88b
+      AlarmActions:
+        - Ref: CpuAlertSNSTopic
+      OKActions:
+        - Ref: CpuAlertSNSTopic
+
+Outputs:
+  AlarmName:
+    Description: Name of the CloudWatch CPU Alarm
+    Value:
+      Ref: EC2CPUHighAlarm
+
+  SnsTopicArn:
+    Description: SNS Topic ARN used for CPU alerts
+    Value:
+      Ref: CpuAlertSNSTopic
